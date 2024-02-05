@@ -1,0 +1,77 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+contract Token is ERC20, Ownable {
+    event LogMessage(string message);
+    event BagsRedeemed(address indexed account, string bag, uint256 quantity);
+
+    mapping(string => uint256) public bagCosts;
+    mapping(string => uint256) public bagCounts;
+
+    constructor() ERC20("Token", "TK") Ownable(msg.sender) {
+        
+        _mint(msg.sender,0);
+
+        bagCosts["Backpack"] = 500;
+        bagCounts["Backpack"] = 50;
+
+        bagCosts["Sling Bag"] = 300;
+        bagCounts["Sling Bag"] = 10;
+
+        bagCosts["Tote"] = 400;
+        bagCounts["Tote"] = 15;
+
+        bagCosts["Messenger Bag"] = 600;
+        bagCounts["Messenger Bag"] = 20;
+    }
+
+    function mintTokens(address account, uint256 amount) public onlyOwner {
+        _mint(account, amount);
+    }
+
+    function burnTokens(uint256 amount) public {
+        require(balanceOf(msg.sender) >= amount, "Not enough tokens to burn");
+        _burn(msg.sender, amount);
+        emit LogMessage("Tokens burned successfully");
+    }
+
+    function transferTokens(address recipient, uint256 amount) external {
+        require(balanceOf(msg.sender) >= amount, "Not enough tokens to transfer");
+        _transfer(msg.sender, recipient, amount);
+    }
+
+    function redeemBag(string memory bag, uint256 sum) external {
+        require(bytes(bag).length > 0, "Bag type cannot be empty");
+        require(sum > 0, "Sum must be greater than zero");
+
+        uint256 totalPrice = bagCosts[bag] * sum;
+        require(balanceOf(msg.sender) >= totalPrice, "Insufficient funds for bag redemption");
+        require(bagCounts[bag] >= sum, "Not enough bags available for redemption");
+
+        address user = msg.sender;
+
+        _burn(user, totalPrice);
+        bagCounts[bag] -= sum;
+
+        emit LogMessage("Bag redeemed successfully");
+    }
+
+
+    function purchaseBag(string memory bag) external {
+        require(bytes(bag).length > 0, "Bag type cannot be empty");
+        require(bagCounts[bag] > 0, "No bags available for purchase");
+
+        uint256 totalPrice = bagCosts[bag];
+        require(balanceOf(msg.sender) >= totalPrice, "Insufficient funds for bag purchase");
+
+        address user = msg.sender;
+
+        _burn(user, totalPrice);
+        bagCounts[bag]--;
+
+        emit BagsRedeemed(user, bag, 1);
+    }
+}
